@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import {
   projectProvisionalTechnologyReference,
@@ -142,5 +143,57 @@ describe('access to the provisional reference through a teaching assignment', ()
     assert.equal(mayConsultProvisionalTechnology({
       ...eligible, assignments: [{ ...eligible.assignments[0], disciplineId: 'another-id' }],
     }), false)
+  })
+})
+
+describe('curricolo consultation is class-independent', () => {
+  const grades = ['PRIMA', 'SECONDA', 'TERZA'] as const
+  const sections = ['A', 'C', 'E'] as const
+
+  it('selects the same verified Arena segment for equivalent sections of each year', () => {
+    for (const grade of grades) {
+      const projections = sections.map(() => projectProvisionalTechnologyReference({
+        selected: fixture(grade), grade, schoolYearRef: '2026/2027',
+      }))
+      for (const result of projections.slice(1)) assert.deepEqual(result, projections[0])
+      assert.equal(projections[0].framework, grade === 'PRIMA' ? 'IN2025' : 'IN2012')
+    }
+  })
+
+  it('authorizes every assigned section by context rather than its letter', () => {
+    for (const grade of grades) {
+      for (const letter of sections) {
+        const sectionId = `class-${grade.toLowerCase()}-${letter.toLowerCase()}`
+        const input = {
+          workspaceId: 'teacher-space',
+          academicYearId: 'school-year',
+          sectionId,
+          schoolYearRef: '2026/2027',
+          assignments: [{
+            workspaceId: 'teacher-space',
+            academicYearId: 'school-year',
+            sectionId,
+            disciplineId: 'tech',
+          }],
+          disciplines: [{ id: 'tech', name: 'Tecnologia' }],
+        }
+        assert.equal(mayConsultProvisionalTechnology(input), true)
+        assert.equal(mayConsultProvisionalTechnology({
+          ...input, sectionId: 'unassigned-class',
+        }), false)
+      }
+    }
+  })
+
+  it('renders one shared consultation page without a pilot-specific branch', () => {
+    const page = readFileSync(
+      new URL('../../app/classi/[sectionId]/curricolo-arena/page.tsx', import.meta.url),
+      'utf8',
+    )
+    assert.match(page, /if \(!mayConsultProvisionalTechnology\(readScope\)\) notFound\(\)/)
+    assert.equal((page.match(/<ArenaProvisionalGradePreviewClient/g) ?? []).length, 1)
+    assert.doesNotMatch(page, /isPilot2C|isEco02PilotClass|eco02PilotIdentityFromEnv/)
+    assert.match(page, /curricolo-arena\/storico/)
+    assert.doesNotMatch(page, /IntakeClient|classify2CPilotBaselineAgainstP7/)
   })
 })

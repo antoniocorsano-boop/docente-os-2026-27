@@ -1,25 +1,24 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell/app-shell'
-import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'
 import { SupabaseAnnualPlanExecutionRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-execution-repository'
 import { SupabaseTeachingAssignmentReader } from '@/core/infrastructure/supabase/supabase-teaching-assignment-reader'
 import { SupabaseTeacherSettingsRepository } from '@/core/infrastructure/supabase/supabase-teacher-settings-repository'
 import { SupabaseWorkspaceRepository } from '@/core/infrastructure/supabase/supabase-workspace-repository'
-import { Supabase2CP7ReceiptEvidenceRepository } from '@/core/infrastructure/supabase/supabase-2c-p7-receipt-evidence-repository'
-import { isEco02PilotClass } from '@/core/domain/cml-discipline-binding'
-import { eco02PilotIdentityFromEnv } from '@/core/server/eco02-pilot-config'
-import { CurriculumArenaIntakeClient } from './curriculum-arena-intake-client'
-import { ArenaCanonicalAlignmentPreviewClient } from './arena-canonical-alignment-preview-client'
-import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
-import { classify2CPilotBaselineAgainstP7, type Pilot2CP7BaselineStatus } from '@/core/domain/cml-2c-p7-provenance'
 import { mayConsultProvisionalTechnology } from '@/core/domain/cml-provisional-technology-reference'
 import { readProvisionalArenaReferenceForClass } from '@/core/server/cml-provisional-arena-release'
+import { ArenaProvisionalGradePreviewClient } from './arena-provisional-grade-preview-client'
 import '../../classi.css'
 import '../../class-workspace-operational.css'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Un'unica consultazione del curricolo per ogni classe autorizzata.
+ * The section ID scopes access; the grade selects the Arena segment.
+ * Historical records are read on demand through the same archive route
+ * per tutte le classi, senza un secondo procedimento curricolare.
+ */
 export default async function CurriculumArenaPage({
   params,
   searchParams,
@@ -39,18 +38,7 @@ export default async function CurriculumArenaPage({
   )
   const section = snapshot.sections.find((candidate) => candidate.id === sectionId)
   if (!section) notFound()
-  const isPilot2C = isEco02PilotClass({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sectionId: section.id,
-    grade: section.grade,
-    sectionCode: section.sectionCode,
-  }, eco02PilotIdentityFromEnv())
 
-  const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
-  // All automatic reads use the same scoped, authenticated teacher assignment
-  // gate. The historical ECO-02/P7 path remains separate from the new source.
   const [assignments, disciplines] = await Promise.all([
     new SupabaseTeachingAssignmentReader().list(context.workspace.id, context.academicYear.id),
     new SupabaseTeacherSettingsRepository().listDisciplines(context.workspace.id, context.academicYear.id),
@@ -64,74 +52,15 @@ export default async function CurriculumArenaPage({
     assignments,
     disciplines,
   }
-  const eligible = mayConsultProvisionalTechnology(readScope)
-  if (!isPilot2C && !eligible) notFound()
-  const arenaSource = eligible
-    ? await readProvisionalArenaReferenceForClass(readScope)
-    : { status: 'NOT_AUTHORIZED' as const, reference: null }
 
-  if (!isPilot2C) {
-    return (
-      <AppShell
-        active="classes"
-        academicYearLabel={context.academicYear.label}
-        workspaceName={context.workspace.name}
-        role={context.role}
-        contentClassName="classesWorkspaceSurface"
-      >
-        <section className="classWorkspaceHeader">
-          <div>
-            <p>CLASSE · CURRICOLO VERTICALE</p>
-            <h1>{sectionLabel}</h1>
-            <span>Consulta il curricolo provvisorio di Tecnologia da Arena. La programmazione e i materiali della classe restano distinti.</span>
-          </div>
-        </section>
-        <section aria-label="Consultazione curricolare provvisoria">
-          <ArenaProvisionalGradePreviewClient
-            section={{
-              grade: section.grade,
-              sectionCode: section.sectionCode,
-              schoolYearRef: context.academicYear.label,
-            }}
-            serverReference={arenaSource.reference}
-            sourceStatus={arenaSource.status}
-          />
-        </section>
-        <Link href={classHref}>← Torna alla classe</Link>
-      </AppShell>
-    )
+  if (!mayConsultProvisionalTechnology(readScope)) notFound()
+  // Compatibility of historic form redirects, identical for every section.
+  if (query.accepted === 'known' || query.accepted === '1') {
+    redirect(`/classi/${encodeURIComponent(sectionId)}/curricolo-arena/storico?accepted=${query.accepted}`)
   }
-
-  const curriculumRepository = new SupabaseAnnualPlanCurriculumRepository()
-  const baseline = await curriculumRepository.currentBaseline({
-    workspaceId: context.workspace.id,
-    academicYearId: context.academicYear.id,
-    sectionId,
-    disciplineRef: 'technology',
-  })
-
-  const p7Provenance = classify2CPilotBaselineAgainstP7({
-    scope: {
-      grade: section.grade,
-      sectionCode: section.sectionCode,
-      schoolYearRef: context.academicYear.label,
-    },
-    currentBaseline: baseline ? {
-      sourceHandoffFootprintHash: baseline.sourceHandoffFootprintHash,
-      alignmentAuthority: baseline.alignmentAuthority,
-      acceptedAt: baseline.acceptedAt,
-    } : null,
-  })
-
-  // Exact P7 evidence is read with the current user's session and workspace RLS.
-  // Failure is reported as unverified, never as a new teacher approval.
-  const p7ReceiptEvidence = await new Supabase2CP7ReceiptEvidenceRepository()
-    .check({
-      workspaceId: context.workspace.id,
-      academicYearId: context.academicYear.id,
-      sectionId,
-    })
-    .catch(() => null)
+  const arenaSource = await readProvisionalArenaReferenceForClass(readScope)
+  const classHref = `/classi/${encodeURIComponent(sectionId)}`
+  const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
 
   return (
     <AppShell
@@ -143,156 +72,39 @@ export default async function CurriculumArenaPage({
     >
       <section className="classWorkspaceHeader">
         <div>
-          <p>CLASSE · CURRICOLO ARENA</p>
+          <p>CLASSE · CURRICOLO DI RIFERIMENTO</p>
           <h1>{sectionLabel}</h1>
-          <span>Pilota Tecnologia 2C: acquisisci una baseline provvisoria da Arena senza sincronizzazioni automatiche.</span>
+          <span>
+            Consulta il segmento pertinente del curricolo provvisorio di Tecnologia.
+            La fonte è comune; programmazione, attività e registrazioni restano della classe.
+          </span>
         </div>
       </section>
 
-      <p>
-        <strong>Riferimento curricolare di lavoro:</strong> Arena, master 1.3 (revisione 27),
-        provvisorio e non approvato.{' '}
-        <a href="https://docs.google.com/document/d/12eWTPUZBJxZixd6-p8drNAaW5_eL8qWpXZUSDyZZAv4/edit"
-          target="_blank" rel="noopener noreferrer">
-          Consulta il curricolo verticale integrale
-        </a>.
-      </p>
-
-      {query.accepted ? (
-        <section className="classRecordFeedback" aria-label="Esito acquisizione curricolo" role="status" aria-live="polite">
-          <strong>{query.accepted === 'known' ? 'Baseline già acquisita.' : 'Acquisizione completata: baseline Arena salvata.'}</strong>
-          <span>{query.accepted === 'known'
-            ? 'La stessa impronta strutturale è già associata alla classe.'
-            : 'La baseline provvisoria è ora associata alla 2C. Puoi tornare alla preparazione della lezione.'}</span>
-        </section>
-      ) : null}
-
-      {eligible ? (
-        <section aria-label="Consultazione provvisoria di Arena">
-          <ArenaProvisionalGradePreviewClient
-            section={{
-              grade: section.grade,
-              sectionCode: section.sectionCode,
-              schoolYearRef: context.academicYear.label,
-            }}
-            serverReference={arenaSource.reference}
-            sourceStatus={arenaSource.status}
-          />
-        </section>
-      ) : null}
-
-      <section className="classWorkspaceGrid">
-        <article className="classWorkspaceCard">
-          <div>
-            <h2>Baseline corrente</h2>
-            <p>È il contesto che Docente OS usa per controllare progettazione e preparazione della lezione.</p>
-          </div>
-          {baseline ? (
-            <div className="classAssignmentList">
-              <div className="classAssignmentItem">
-                <div><strong>{baseline.curriculumState === 'APPROVED' ? 'Istituzionale' : 'Provvisoria'}</strong><span>{baseline.alignmentAuthority}</span></div>
-                <small>{baseline.requiresRevalidationOnApproval ? 'Rivalidazione futura richiesta' : 'Rivalidazione non richiesta'}</small>
-              </div>
-              <div className="classAssignmentItem">
-                <div><strong>Copertura</strong><span>{baseline.curriculumCoverage.status}</span></div>
-                <small>{baseline.curricularContext.requirements.length} requisiti tracciati</small>
-              </div>
-              <div className="classAssignmentItem">
-                <div><strong>Impronta Arena</strong><span>{baseline.sourceHandoffFootprintHash}</span></div>
-                <small>Accettata {formatDateTime(baseline.acceptedAt)}</small>
-              </div>
-            </div>
-          ) : (
-            <div className="classesEmpty">
-              <strong>Nessuna baseline Arena ancora acquisita.</strong>
-              <span>Scarica il passaggio da Arena, controllalo qui e confermalo esplicitamente.</span>
-            </div>
-          )}
-          <div className="classAssignmentItem">
-            <div>
-              <strong>Riscontro con il pilota del 21 settembre</strong>
-              <span>{p7SourceStatusLabel(p7Provenance.status)}</span>
-            </div>
-            <small>Il confronto delle sole impronte non prova l’esistenza attuale della ricevuta di preparazione e non verifica l’identità istituzionale.</small>
-          </div>
-          <div className="classAssignmentItem">
-            <div>
-              <strong>Ricevuta di preparazione P7</strong>
-              <span>{p7ReceiptEvidence === null
-                ? 'Verifica temporaneamente non disponibile'
-                : p7ReceiptEvidence.status === 'DOCUMENTED_RECEIPT_VERIFIED'
-                  ? 'Presente e coerente con la preparazione del 21 settembre'
-                  : p7ReceiptEvidence.status === 'DOCUMENTED_RECEIPT_NOT_FOUND'
-                    ? 'Non presente nell’attuale contesto autorizzato'
-                    : 'Presente, ma non corrispondente alla prova storica documentata'}</span>
-            </div>
-            <small>Riscontro autenticato sul solo blocco B01 della 2C; non modifica la progettazione e non approva il nuovo curricolo.</small>
-          </div>
-        </article>
-
-        <ArenaCanonicalAlignmentPreviewClient
-          p7ReceiptVerified={p7ReceiptEvidence?.historicalReceiptVerified === true}
+      <section aria-label="Consultazione curricolare provvisoria">
+        <ArenaProvisionalGradePreviewClient
           section={{
             grade: section.grade,
             sectionCode: section.sectionCode,
             schoolYearRef: context.academicYear.label,
           }}
-          legacyBaseline={baseline ? {
-            sourceHandoffFootprintHash: baseline.sourceHandoffFootprintHash,
-            alignmentAuthority: baseline.alignmentAuthority,
-            acceptedAt: baseline.acceptedAt,
-            reviewedConstraints: baseline.reviewedFramework.constraints.map(constraint => ({
-              id: constraint.id,
-              description: constraint.description,
-            })),
-          } : null}
-        />
-        <CurriculumArenaIntakeClient
-          sectionId={sectionId}
-          currentFootprint={baseline?.sourceHandoffFootprintHash ?? null}
+          serverReference={arenaSource.reference}
+          sourceStatus={arenaSource.status}
         />
       </section>
 
-      <details className="technicalDetails">
-        <summary><span><strong>Confine di autorità</strong><small>Cosa questa pagina può e non può fare</small></span><b aria-hidden>＋</b></summary>
-        <div className="technicalDetailsBody">
-          <p>Arena resta la fonte del contesto curricolare e della sua impronta strutturale.</p>
-          <p>Docente OS salva la baseline solo dopo una decisione esplicita del docente autenticato.</p>
-          <p>Una baseline provvisoria non diventa approvazione istituzionale. Un futuro passaggio approvato richiederà un segnale Arena verificabile lato server e una rivalidazione esplicita del docente.</p>
-          <p>Questo caricamento locale non può promuovere autorità istituzionale.</p>
-        </div>
-      </details>
-
+      <p>
+        <Link href={`${classHref}/curricolo-arena/storico`}>
+          Registrazioni e riferimenti già acquisiti
+        </Link>
+      </p>
       <Link href={classHref}>← Torna alla classe</Link>
     </AppShell>
   )
-}
-
-function p7SourceStatusLabel(status: Pilot2CP7BaselineStatus): string {
-  switch (status) {
-    case 'NO_CURRENT_BASELINE':
-      return 'Nessuna baseline corrente rilevata per la 2C'
-    case 'P7_SOURCE_FOOTPRINT_MATCH':
-      return 'La fonte della baseline corrente coincide con quella documentata nel pilota'
-    case 'CURRENT_BASELINE_DIFFERS_FROM_P7':
-      return 'Fonte corrente diversa da quella documentata: confronto professionale necessario'
-    case 'P7_FOOTPRINT_WITH_CHANGED_AUTHORITY':
-      return 'Impronta coincidente, ma stato di autorità cambiato: verifica necessaria'
-  }
 }
 
 function gradeNumber(grade: 'PRIMA' | 'SECONDA' | 'TERZA') {
   if (grade === 'PRIMA') return '1'
   if (grade === 'SECONDA') return '2'
   return '3'
-}
-
-function formatDateTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('it-IT', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'Europe/Rome',
-  }).format(date)
 }

@@ -69,6 +69,41 @@
       "path": "product/src/core/infrastructure/supabase/eco02-2c-vertical-reference-receipt-contract.test.ts",
       "contains": "eco02_curriculum_intake_scopes",
       "reason": "The regression test must verify that the new 2C RPC continues to require the existing deployed ECO-02 pilot scope table; this is an exact compatibility reference."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "import { SupabaseAnnualPlanCurriculumRepository } from '@/core/infrastructure/supabase/supabase-annual-plan-curriculum-repository'",
+      "reason": "Exact import of the pre-existing baseline repository relocated from the former class-specific page to the optional, access-controlled historical archive; renaming the published module is outside this refactor."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "import { CurriculumArenaIntakeClient } from '../curriculum-arena-intake-client'",
+      "reason": "Exact import of the pre-existing legacy P7 intake component moved to the optional historical archive; no new teacher-facing English vocabulary or new intake behavior."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "new SupabaseAnnualPlanCurriculumRepository().currentBaseline(",
+      "reason": "The archived view reads the original per-class baseline through its existing stable API; compatibility with the historical persistence interface must be preserved."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "baseline.curriculumState",
+      "reason": "Existing persisted baseline member, displayed only in the archive; changing the property name would modify the deployed domain contract."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "baseline.curriculumCoverage",
+      "reason": "Existing persisted baseline coverage member, displayed only in the archive without mutation; preserve the established contract."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "baseline.curricularContext",
+      "reason": "Existing persisted baseline context member, displayed only in the archive without mutation; preserve the established contract."
+    },
+    {
+      "path": "product/src/app/classi/[sectionId]/curricolo-arena/storico/page.tsx",
+      "contains": "<CurriculumArenaIntakeClient",
+      "reason": "Exact legacy component usage moved into the authorized historical archive; the shared curriculum consultation no longer renders the pilot intake."
     }
   ]
 }
