@@ -66,13 +66,13 @@ export function ArenaProvisionalGradePreviewClient({
             <strong>{sourceStatus === 'SOURCE_UNVERIFIED'
               ? 'La fonte disponibile non ha superato i controlli.'
               : 'La consegna automatica del curricolo non è ancora disponibile.'}</strong>
-            {' '}Il documento integrale resta consultabile; per estrarre i contenuti
-            della classe puoi utilizzare la release completa di Arena sul dispositivo.
+            {' '}Il curricolo resta protetto; la consultazione per classe avviene soltanto
+            dopo il collegamento personale e la verifica della fonte originale.
           </p>
           {googleConnectHref ? (
             <p><a href={googleConnectHref}>Collega Google Drive per consultare automaticamente il curricolo privato</a></p>
           ) : null}
-          <p><small>Nessun file da selezionare o caricare manualmente. L'accesso Google è personale e richiede consenso esplicito.</small></p>
+          <p><small>Nessun file da selezionare o caricare manualmente. L&apos;accesso Google è personale e richiede consenso esplicito.</small></p>
         </>
       )}
 
