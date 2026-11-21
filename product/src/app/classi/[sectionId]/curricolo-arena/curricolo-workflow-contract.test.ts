@@ -42,6 +42,9 @@ test('La schermata propone salvataggio solo per UDA e mantiene gli altri casi no
   // @trama-feedback-test: check the critical write has persistent visible feedback and pending state.
   assert.match(client, /role="alert"/)
   assert.match(client, /disabled=\{saving\}/)
+  assert.match(client, /!draft\.evidence\.trim\(\)/)
+  assert.match(action, /!safe\.evidence/)
+  assert.match(action, /sourceEvidence: input\.sourceEvidence/)
   assert.match(client, /draft.kind === 'UDA'/)
   assert.match(client, /Salva UDA in Progetta/)
   assert.match(client, /il salvataggio integrato di attività, lezioni e percorsi/)
