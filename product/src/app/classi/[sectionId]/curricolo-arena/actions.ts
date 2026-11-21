@@ -100,7 +100,7 @@ export async function acceptArenaCurriculumHandoff(
 
     if (current?.sourceHandoffFootprintHash === handoff.structuralFootprint.hash) {
       revalidateCurriculumPaths(sectionId)
-      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena/storico?accepted=known`
+      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=known`
     } else if (current) {
       return {
         status: 'error',
@@ -136,7 +136,7 @@ export async function acceptArenaCurriculumHandoff(
       })
 
       revalidateCurriculumPaths(sectionId)
-      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena/storico?accepted=1`
+      destination = `/classi/${encodeURIComponent(sectionId)}/curricolo-arena?accepted=1`
     }
   } catch (error) {
     return {
@@ -152,7 +152,6 @@ export async function acceptArenaCurriculumHandoff(
 function revalidateCurriculumPaths(sectionId: string) {
   revalidatePath(`/classi/${sectionId}`)
   revalidatePath(`/classi/${sectionId}/curricolo-arena`)
-  revalidatePath(`/classi/${sectionId}/curricolo-arena/storico`)
   revalidatePath(`/classi/${sectionId}/lezioni/[blockId]`, 'page')
 }
 
