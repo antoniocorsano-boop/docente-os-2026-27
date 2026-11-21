@@ -100,7 +100,7 @@ export async function saveArenaUdaInProgetta(input: {
     byteSize: Buffer.byteLength(body, 'utf8'),
     sourceMetadata: {
       origin: 'ARENA_TEACHER_PROPOSAL',
-      curricularState: 'PROVISIONAL_NOT_IN_FORCE',
+      statoFonte: 'PROVISIONAL_NOT_IN_FORCE',
       originalReleaseSha256: TRUSTED_ARENA_2026_RELEASE_SHA256,
       sourceVersion: result.reference.sourceVersion,
       sourceSegmentId: result.reference.segmentId,
