@@ -14,17 +14,20 @@ import '../../class-workspace-operational.css'
 export const dynamic = 'force-dynamic'
 
 /**
- * One curriculum consultation route for every authorized class.
+ * Un'unica consultazione del curricolo per ogni classe autorizzata.
  * The section ID scopes access; the grade selects the Arena segment.
  * Historical records are read on demand through the same archive route
- * for every class, never through a separate curriculum implementation.
+ * per tutte le classi, senza un secondo procedimento curricolare.
  */
 export default async function CurriculumArenaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sectionId: string }>
+  searchParams: Promise<{ accepted?: string }>
 }) {
   const { sectionId } = await params
+  const query = await searchParams
   const context = await new SupabaseWorkspaceRepository().getCurrentContext()
   if (!context) redirect('/login')
   if (!context.academicYear) redirect('/workspace')
@@ -51,6 +54,10 @@ export default async function CurriculumArenaPage({
   }
 
   if (!mayConsultProvisionalTechnology(readScope)) notFound()
+  // Compatibility of historic form redirects, identical for every section.
+  if (query.accepted === 'known' || query.accepted === '1') {
+    redirect(`/classi/${encodeURIComponent(sectionId)}/curricolo-arena/storico?accepted=${query.accepted}`)
+  }
   const arenaSource = await readProvisionalArenaReferenceForClass(readScope)
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
   const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
