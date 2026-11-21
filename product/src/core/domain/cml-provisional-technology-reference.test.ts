@@ -146,7 +146,7 @@ describe('access to the provisional reference through a teaching assignment', ()
   })
 })
 
-describe('curriculum consultation is class-independent', () => {
+describe('curricolo consultation is class-independent', () => {
   const grades = ['PRIMA', 'SECONDA', 'TERZA'] as const
   const sections = ['A', 'C', 'E'] as const
 
@@ -194,6 +194,6 @@ describe('curriculum consultation is class-independent', () => {
     assert.equal((page.match(/<ArenaProvisionalGradePreviewClient/g) ?? []).length, 1)
     assert.doesNotMatch(page, /isPilot2C|isEco02PilotClass|eco02PilotIdentityFromEnv/)
     assert.match(page, /curricolo-arena\/storico/)
-    assert.doesNotMatch(page, /CurriculumArenaIntakeClient|classify2CPilotBaselineAgainstP7/)
+    assert.doesNotMatch(page, /IntakeClient|classify2CPilotBaselineAgainstP7/)
   })
 })
