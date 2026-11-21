@@ -93,6 +93,7 @@ export default async function CurriculumArenaPage({
         </section>
         <section aria-label="Consultazione curricolare provvisoria">
           <ArenaProvisionalGradePreviewClient
+            sectionId={sectionId}
             section={{
               grade: section.grade,
               sectionCode: section.sectionCode,
@@ -177,6 +178,7 @@ export default async function CurriculumArenaPage({
       {eligible ? (
         <section aria-label="Consultazione provvisoria di Arena">
           <ArenaProvisionalGradePreviewClient
+            sectionId={sectionId}
             section={{
               grade: section.grade,
               sectionCode: section.sectionCode,
