@@ -1,13 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { GoogleOAuthConnectionRepository } from './google-oauth-connection-repository'
+import { googleOAuthScopesForPurpose, type GoogleOAuthPurpose } from './google-oauth-purpose'
+import { googleOAuthPublicOrigin, safeGoogleOAuthReturnTo } from './google-oauth-public-url'
 
-export const GOOGLE_DIARY_SCOPES = [
-  'openid',
-  'email',
-  'https://www.googleapis.com/auth/spreadsheets',
-]
+export { GOOGLE_DIARY_SCOPES } from './google-oauth-purpose'
 
-export function createGoogleOAuthRequest(returnTo: string) {
+export function createGoogleOAuthRequest(returnTo: string, purpose: GoogleOAuthPurpose = 'diary') {
   const state = randomBytes(24).toString('base64url')
   const verifier = randomBytes(48).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
@@ -15,14 +13,15 @@ export function createGoogleOAuthRequest(returnTo: string) {
   url.searchParams.set('client_id', googleClientId())
   url.searchParams.set('redirect_uri', googleRedirectUri())
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', GOOGLE_DIARY_SCOPES.join(' '))
+  const scopes = googleOAuthScopesForPurpose(purpose)
+  url.searchParams.set('scope', scopes.join(' '))
   url.searchParams.set('access_type', 'offline')
   url.searchParams.set('include_granted_scopes', 'true')
   url.searchParams.set('prompt', 'consent')
   url.searchParams.set('state', state)
   url.searchParams.set('code_challenge', challenge)
   url.searchParams.set('code_challenge_method', 'S256')
-  return { url: url.toString(), state, verifier, returnTo: safeReturnTo(returnTo) }
+  return { url: url.toString(), state, verifier, returnTo: safeGoogleOAuthReturnTo(returnTo) }
 }
 
 export async function exchangeGoogleAuthorizationCode(code: string, verifier: string) {
@@ -46,7 +45,7 @@ export async function exchangeGoogleAuthorizationCode(code: string, verifier: st
   return {
     accessToken: payload.access_token,
     refreshToken: typeof payload.refresh_token === 'string' ? payload.refresh_token : null,
-    scopes: typeof payload.scope === 'string' ? payload.scope.split(/\s+/).filter(Boolean) : GOOGLE_DIARY_SCOPES,
+    scopes: typeof payload.scope === 'string' ? payload.scope.split(/\s+/).filter(Boolean) : [],
     expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
   }
 }
@@ -92,7 +91,7 @@ export async function activeGoogleAccessToken(workspaceId: string) {
 }
 
 export function googleOAuthConfigured() {
-  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY && process.env.NEXT_PUBLIC_APP_URL)
+  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_TOKEN_ENCRYPTION_KEY && googleOAuthPublicOrigin())
 }
 
 function googleClientId() {
@@ -108,11 +107,7 @@ function googleClientSecret() {
 }
 
 function googleRedirectUri() {
-  const base = process.env.NEXT_PUBLIC_APP_URL
-  if (!base) throw new Error('NEXT_PUBLIC_APP_URL is not configured')
+  const base = googleOAuthPublicOrigin()
+  if (!base) throw new Error('Public Google OAuth origin is not configured')
   return new URL('/api/google/drive/callback', base).toString()
-}
-
-function safeReturnTo(value: string) {
-  return value.startsWith('/') && !value.startsWith('//') ? value : '/classi'
 }
