@@ -19,6 +19,8 @@ it('preserves failure and denial feedback rather than silently changing accounts
   assert.match(arenaGoogleConnectionMessage('failed')!, /non completato/)
   assert.match(arenaGoogleConnectionMessage('context-mismatch')!, /spazio docente/)
   assert.match(arenaGoogleConnectionMessage('not-configured')!, /non è configurato/)
+  assert.match(arenaGoogleConnectionMessage('scope-mismatch')!, /permessi Google/)
+  assert.match(arenaGoogleConnectionMessage('account-mismatch')!, /non coincide/)
   assert.equal(arenaGoogleConnectionMessage('unknown'), null)
 })
 

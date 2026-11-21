@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
   if (!context) return NextResponse.redirect(new URL('/login', request.url))
 
   const purpose = request.nextUrl.searchParams.get('purpose') === 'arena' ? 'arena' : 'diary'
+  if (purpose === 'arena' && (context.workspace.kind !== 'PERSONAL'
+    || context.role !== 'OWNER'
+    || process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/[/]$/, '') !== 'https://gnshgapmwyjamhmlikeg.supabase.co')) {
+    const target = new URL(returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/classi', request.url)
+    target.searchParams.set('google', 'context-mismatch')
+    return NextResponse.redirect(target)
+  }
   const oauth = createGoogleOAuthRequest(returnTo, purpose)
   const jar = await cookies()
   const options = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 600 }
@@ -24,5 +31,6 @@ export async function GET(request: NextRequest) {
   jar.set('docente_google_oauth_verifier', oauth.verifier, options)
   jar.set('docente_google_oauth_return', oauth.returnTo, options)
   jar.set('docente_google_oauth_workspace', context.workspace.id, options)
+  jar.set('docente_google_oauth_purpose', purpose, options)
   return NextResponse.redirect(oauth.url)
 }
