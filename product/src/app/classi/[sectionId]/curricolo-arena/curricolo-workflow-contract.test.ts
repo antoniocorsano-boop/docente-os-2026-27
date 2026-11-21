@@ -35,10 +35,13 @@ test('Progetta riusa documenti UDA versionati e un asset personale distinto dall
   assert.match(action, /sourceAssetId: asset.id/)
   assert.match(action, /new SupabaseAuthoredDocumentRepository\(\)\.openUda/)
   assert.match(action, /\/progetta\/documenti\//)
-  assert.doesNotMatch(action, /curriculum_baseline.*insert|curriculum_state.*approved/i)
+  assert.doesNotMatch(action, /adozione.*automatica|sourceHandoffFootprintHash.*insert/i)
 })
 
 test('La schermata propone salvataggio solo per UDA e mantiene gli altri casi non attivi', () => {
+  // @trama-feedback-test: check the critical write has persistent visible feedback and pending state.
+  assert.match(client, /role="alert"/)
+  assert.match(client, /disabled=\{saving\}/)
   assert.match(client, /draft.kind === 'UDA'/)
   assert.match(client, /Salva UDA in Progetta/)
   assert.match(client, /il salvataggio integrato di attività, lezioni e percorsi/)
