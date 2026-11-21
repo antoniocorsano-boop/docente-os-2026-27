@@ -21,9 +21,9 @@ export const dynamic = 'force-dynamic'
 /**
  * One optional archive for all authorized classes. Its primary view reads the
  * class-scoped baseline; only documented historical P7 evidence activates the
- * legacy review, without changing the common curriculum consultation route.
+ * legacy review, without changing the shared curricolo consultation.
  */
-export default async function ClassCurriculumArchivePage({
+export default async function ClassCurricoloArchivePage({
   params,
   searchParams,
 }: {
@@ -63,7 +63,7 @@ export default async function ClassCurriculumArchivePage({
     disciplineRef: 'technology',
   })
 
-  // Historical compatibility only: never used to choose the curriculum
+  // Historical compatibility only: never used to choose the curricolo
   // segment or to grant access. Other sections receive the same archive view.
   const hasDocumentedLegacyScope = isEco02PilotClass({
     workspaceId: context.workspace.id,
@@ -96,7 +96,7 @@ export default async function ClassCurriculumArchivePage({
     : null
 
   const classHref = `/classi/${encodeURIComponent(sectionId)}`
-  const curriculumHref = `${classHref}/curricolo-arena`
+  const curricoloHref = `${classHref}/curricolo-arena`
   const sectionLabel = `${gradeNumber(section.grade)}ª ${section.sectionCode}`
 
   return (
@@ -235,7 +235,7 @@ export default async function ClassCurriculumArchivePage({
         </div>
       </details>
 
-      <p><Link href={curriculumHref}>← Torna al curricolo di riferimento</Link></p>
+      <p><Link href={curricoloHref}>← Torna al curricolo di riferimento</Link></p>
       <Link href={classHref}>Torna alla classe</Link>
     </AppShell>
   )
