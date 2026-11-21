@@ -5,24 +5,24 @@ import type {
   ProvisionalTechnologyGrade, ProvisionalTechnologyReference,
 } from '@/core/domain/cml-provisional-technology-reference'
 import {
-  createCurriculumWorkProposal,
-  curriculumReadingExcerpts,
-  searchCurriculumExcerpts,
-  type CurriculumFacet,
-  type CurriculumWorkKind,
-  type CurriculumWorkProposal,
-} from '@/core/domain/cml-curriculum-workbench'
+  createCurricoloWorkProposal,
+  curricoloReadingExcerpts,
+  searchCurricoloExcerpts,
+  type CurricoloFacet,
+  type CurricoloWorkKind,
+  type CurricoloWorkProposal,
+} from '@/core/domain/cml-curricolo-workbench'
 import { arenaGoogleConnectionMessage } from './arena-google-connection-feedback'
-import styles from './arena-curriculum-workbench.module.css'
+import styles from './arena-curricolo-workbench.module.css'
 
 const ORIGINAL_SOURCE_URL = 'https://drive.google.com/file/d/1r6CUQ0ziNEHSnttJ7tgeoOCkUZpOQg6-/view'
-const KINDS: readonly { id: CurriculumWorkKind; label: string }[] = [
+const KINDS: readonly { id: CurricoloWorkKind; label: string }[] = [
   { id: 'ATTIVITA', label: 'Attività' },
   { id: 'LEZIONE', label: 'Lezione' },
   { id: 'UDA', label: 'UDA' },
   { id: 'PERCORSO', label: 'Percorso' },
 ]
-const FACETS: readonly { id: CurriculumFacet; label: string }[] = [
+const FACETS: readonly { id: CurricoloFacet; label: string }[] = [
   { id: 'obiettivi', label: 'Obiettivi' },
   { id: 'conoscenze', label: 'Conoscenze' },
   { id: 'evidenze', label: 'Evidenze attese' },
@@ -40,31 +40,31 @@ export function ArenaProvisionalGradePreviewClient({
   const [startMode, setStartMode] = useState<'curricolo' | 'tema'>('curricolo')
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [workKind, setWorkKind] = useState<CurriculumWorkKind>('ATTIVITA')
+  const [workKind, setWorkKind] = useState<CurricoloWorkKind>('ATTIVITA')
   const [theme, setTheme] = useState('')
   const [evidence, setEvidence] = useState('')
-  const [draft, setDraft] = useState<CurriculumWorkProposal | null>(null)
+  const [draft, setDraft] = useState<CurricoloWorkProposal | null>(null)
   const [showSource, setShowSource] = useState(false)
   const googleFeedback = arenaGoogleConnectionMessage(googleState)
   const entries = useMemo(
-    () => serverReference ? curriculumReadingExcerpts(serverReference) : [],
+    () => serverReference ? curricoloReadingExcerpts(serverReference) : [],
     [serverReference],
   )
-  const matches = useMemo(() => searchCurriculumExcerpts(entries, query), [entries, query])
+  const matches = useMemo(() => searchCurricoloExcerpts(entries, query), [entries, query])
   const selected = entries.find(item => item.id === selectedId) ?? null
   const evidenceEntries = entries.filter(item => item.facet === 'evidenze')
 
   function startDraft() {
     if (!serverReference || !selected) return
-    setDraft(createCurriculumWorkProposal({
+    setDraft(createCurricoloWorkProposal({
       reference: serverReference, selected, kind: workKind, theme,
       evidence,
     }))
   }
 
-  function updateDraft<K extends keyof Pick<CurriculumWorkProposal,
+  function updateDraft<K extends keyof Pick<CurricoloWorkProposal,
     'title' | 'theme' | 'objective' | 'evidence' | 'task' | 'resources' | 'duration' | 'steps' | 'observation'
-  >>(key: K, value: CurriculumWorkProposal[K]) {
+  >>(key: K, value: CurricoloWorkProposal[K]) {
     setDraft(current => current ? { ...current, [key]: value } : null)
   }
 
@@ -113,10 +113,10 @@ export function ArenaProvisionalGradePreviewClient({
                     Parto da un argomento
                   </button>
                 </div>
-                <label className={styles.searchLabel} htmlFor="arena-curriculum-query">
+                <label className={styles.searchLabel} htmlFor="arena-curricolo-query">
                   {startMode === 'tema' ? 'Quale argomento vuoi affrontare?' : 'Cerca un obiettivo, una conoscenza o un’evidenza'}
                 </label>
-                <input id="arena-curriculum-query" type="search" className={styles.search}
+                <input id="arena-curricolo-query" type="search" className={styles.search}
                   value={query} onChange={event => { setQuery(event.target.value); setSelectedId(null) }}
                   placeholder={startMode === 'tema' ? 'Es. energia, materiali, filiere…' : 'Cerca nel curricolo verificato…'} />
                 {startMode === 'tema' ? <p className={styles.helper}>
@@ -174,7 +174,7 @@ export function ArenaProvisionalGradePreviewClient({
                   </select>
                   <label className={styles.searchLabel} htmlFor="arena-draft-kind">Che cosa vuoi preparare?</label>
                   <select id="arena-draft-kind" className={styles.search} value={workKind}
-                    onChange={event => setWorkKind(event.target.value as CurriculumWorkKind)}>
+                    onChange={event => setWorkKind(event.target.value as CurricoloWorkKind)}>
                     {KINDS.map(kind => <option key={kind.id} value={kind.id}>{kind.label}</option>)}
                   </select>
                   <button type="button" className={styles.primary} onClick={startDraft}>
