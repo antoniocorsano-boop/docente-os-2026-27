@@ -58,6 +58,7 @@ test('La proposta di UDA è una bozza personale, con provenienza e testo Arena i
   assert.equal(result.source.originalText, reference.obiettivi[0])
   assert.equal(result.source.authority, 'PROVISIONAL_NOT_IN_FORCE')
   assert.equal(result.evidence, 'analisi di sistema')
+  assert.equal(result.task, '', 'La UDA richiede un compito scritto dal docente')
   assert.match(curricoloProposalAsMarkdown(result), /NON vigente e NON approvata/)
 })
 
