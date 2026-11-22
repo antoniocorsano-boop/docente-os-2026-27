@@ -35,6 +35,7 @@ export type CurricoloWorkProposal = {
     sourceIndex: number
     originalText: string
     selectedText: string
+    selectedEvidence: string
     authority: 'PROVISIONAL_NOT_IN_FORCE'
   }
 }
@@ -124,6 +125,7 @@ export function createCurricoloWorkProposal(input: {
       sourceIndex: actual.sourceIndex,
       originalText: actual.originalText,
       selectedText: actual.text,
+      selectedEvidence: evidence,
       authority: 'PROVISIONAL_NOT_IN_FORCE' as const,
     },
   }
@@ -142,8 +144,8 @@ export function createCurricoloWorkProposal(input: {
 export function curricoloProposalAsMarkdown(proposal: CurricoloWorkProposal): string {
   const fields: [string, string][] = [
     ['Tema e contesto', proposal.theme],
-    ['Obiettivo di lavoro (estratto dalla fonte)', proposal.objective],
-    ['Evidenza selezionata', proposal.evidence || 'Da scegliere e verificare'],
+    ['Obiettivo di lavoro formulato dal docente', proposal.objective],
+    ['Evidenza di lavoro formulata dal docente', proposal.evidence || 'Da scegliere e verificare'],
     ['Compito o situazione di apprendimento', proposal.task],
     ['Risorse', proposal.resources || 'Da definire'],
     ['Durata', proposal.duration || 'Da definire'],
@@ -159,6 +161,8 @@ export function curricoloProposalAsMarkdown(proposal: CurricoloWorkProposal): st
     '## Provenienza e stato',
     `Arena, master ${proposal.source.sourceVersion}; segmento ${proposal.source.segmentId}; ${proposal.source.schoolYearRef}; ${proposal.source.framework}.`,
     `Campo originale: ${proposal.source.sourceField} [${proposal.source.sourceIndex + 1}].`,
+    `Estratto scelto dalla fonte Arena: ${proposal.source.selectedText}`,
+    `Evidenza selezionata dal curricolo Arena: ${proposal.source.selectedEvidence || 'Non selezionata'}`,
     `Testo integrale della fonte: ${proposal.source.originalText}`,
     'Fonte provvisoria, NON vigente e NON approvata. Questa bozza non è una modifica al curricolo.',
   ].join('\n')
