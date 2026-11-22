@@ -227,8 +227,8 @@ export function ArenaProvisionalGradePreviewClient({
               {([
                 ['title', 'Titolo'],
                 ['theme', 'Tema o contesto'],
-                ['objective', 'Obiettivo di lavoro'],
-                ['evidence', 'Evidenza attesa'],
+                ['objective', 'Obiettivo di lavoro del docente'],
+                ['evidence', 'Evidenza di lavoro del docente'],
                 ['task', 'Compito o situazione'],
                 ['resources', 'Risorse e materiali'],
                 ['duration', 'Durata prevista'],
@@ -249,7 +249,9 @@ export function ArenaProvisionalGradePreviewClient({
               <details className={styles.sourceDetail}>
                 <summary>Provenienza verificabile</summary>
                 <p>Arena · master {draft.source.sourceVersion} · {draft.source.framework} · {draft.source.segmentId}.</p>
-                <p>Fonte autentica, non vigente: {draft.source.originalText}</p>
+                <p>Estratto originale Arena: {draft.source.selectedText}</p>
+                <p>Evidenza scelta da Arena: {draft.source.selectedEvidence || 'Non selezionata'}</p>
+                <p>Testo integrale della fonte non vigente: {draft.source.originalText}</p>
               </details>
               {draft.kind === 'UDA' ? (
                 <>
