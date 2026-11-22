@@ -58,8 +58,22 @@ test('La proposta di UDA è una bozza personale, con provenienza e testo Arena i
   assert.equal(result.source.originalText, reference.obiettivi[0])
   assert.equal(result.source.authority, 'PROVISIONAL_NOT_IN_FORCE')
   assert.equal(result.evidence, 'analisi di sistema')
+  assert.equal(result.source.selectedEvidence, 'analisi di sistema')
   assert.equal(result.task, '', 'La UDA richiede un compito scritto dal docente')
-  assert.match(curricoloProposalAsMarkdown(result), /NON vigente e NON approvata/)
+  const edited = {
+    ...result,
+    objective: 'Proposta personale del docente: interpretare due sistemi',
+    evidence: 'Scheda osservativa predisposta dal docente',
+  }
+  const document = curricoloProposalAsMarkdown(edited)
+  assert.match(document, /Obiettivo di lavoro formulato dal docente/)
+  assert.match(document, /Proposta personale del docente: interpretare due sistemi/)
+  assert.match(document, /Evidenza di lavoro formulata dal docente/)
+  assert.match(document, /Scheda osservativa predisposta dal docente/)
+  assert.match(document, /Estratto scelto dalla fonte Arena: analizzare sistemi energetici\/produttivi/)
+  assert.match(document, /Evidenza selezionata dal curricolo Arena: analisi di sistema/)
+  assert.match(document, /Testo integrale della fonte: rappresentare soluzioni; analizzare sistemi energetici\/produttivi; confrontare impatti/)
+  assert.match(document, /NON vigente e NON approvata/)
 })
 
 test('Testi inventati, evidenze estranee e fonti scrivibili vengono rifiutati', () => {
