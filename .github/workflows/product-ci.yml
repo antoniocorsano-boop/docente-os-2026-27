@@ -25,10 +25,11 @@ jobs:
         with:
           node-version: 22
       - name: Block remote Supabase access in routine Product CI (P0)
+        working-directory: .
         run: |
-          node ../.github/scripts/p0-supabase-ci-isolation.mjs --self-test
-          node ../.github/scripts/p0-supabase-ci-isolation.mjs --check
-          if NEXT_PUBLIC_SUPABASE_URL='https://fictional-live.supabase.co' node ../.github/scripts/p0-supabase-ci-isolation.mjs --check >/dev/null 2>&1; then
+          node .github/scripts/p0-supabase-ci-isolation.mjs --self-test
+          node .github/scripts/p0-supabase-ci-isolation.mjs --check
+          if NEXT_PUBLIC_SUPABASE_URL='https://fictional-live.supabase.co' node .github/scripts/p0-supabase-ci-isolation.mjs --check >/dev/null 2>&1; then
             echo 'ERROR: remote Supabase endpoint was accepted by the CI guard' >&2
             exit 1
           fi
